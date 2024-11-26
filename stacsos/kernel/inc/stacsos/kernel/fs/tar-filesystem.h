@@ -54,6 +54,18 @@ class tarfs_node : public fs_node {
 	friend class tar_filesystem;
 
 public:
+    const list<tarfs_node*> &children() const {
+        return children_;
+    }
+
+	u64 count() const {
+	    return children_.count();
+    }
+
+	u64 size() const {
+	    return data_size_;
+    }
+
 	tarfs_node(filesystem &fs, fs_node *parent, fs_node_kind kind, const string &name, u64 data_start, u64 data_size)
 		: fs_node(fs, parent, kind, name)
 		, data_start_(data_start)

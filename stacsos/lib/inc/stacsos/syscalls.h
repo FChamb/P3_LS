@@ -28,7 +28,8 @@ enum class syscall_numbers {
 	join_thread = 14,
 	sleep = 15,
 	poweroff = 16,
-	ioctl = 17
+	ioctl = 17,
+    ls = 18
 };
 
 struct syscall_result {

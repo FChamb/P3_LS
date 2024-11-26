@@ -17,6 +17,8 @@
 #include <stacsos/kernel/sched/sleeper.h>
 #include <stacsos/kernel/sched/thread.h>
 #include <stacsos/syscalls.h>
+#include <stacsos/kernel/fs/tar-filesystem.h>
+#include <stacsos/string.h>
 
 using namespace stacsos;
 using namespace stacsos::kernel;
@@ -181,6 +183,76 @@ extern "C" syscall_result handle_syscall(syscall_numbers index, u64 arg0, u64 ar
 		pio::outw(0x604, 0x2000);
 		return syscall_result { syscall_result_code::ok, 0 };
 	}
+
+    case syscall_numbers::ls: {
+        auto path = (const char *) arg0;
+        char *buffer = reinterpret_cast<char *>(arg1);
+        auto buffer_size = static_cast<u64>(arg2);
+        auto long_listing = (bool) arg3;
+        auto node = vfs::get().lookup(path);
+        buffer_size--;
+        int maxFull = 50;
+        int max = 0;
+        int extra = 10;
+
+        if (node && node->kind() == fs_node_kind::directory) {
+            auto dir = static_cast<tarfs_node*>(node);
+            if (!dir) {
+                return syscall_result { syscall_result_code::not_found, 0 };
+            }
+            int index = 0;
+            list<tarfs_node*> children = dir->children();
+            for (fs_node* child : children) {
+                if (child->name().length() > max) {
+                    max = child->name().length();
+                    if (max > maxFull) {
+                        break;
+                    }
+                }
+            }
+            for (tarfs_node* child : children) {
+                int name_length = child->name().length();
+                string name = child->name();
+                if (name == "") {
+                    continue;
+                }
+                if (long_listing) {
+                    buffer[index++] = '[';
+                    buffer[index++] = child->kind() == fs_node_kind::directory ? 'D' : 'F';
+                    buffer[index++] = ']';
+                    buffer[index++] = ' ';
+                }
+                for (int i = 0; i < name.length(); ++i) {
+                    buffer[index++] = name[i];
+                    if (index == buffer_size) {
+                        buffer[++index] = '\0';
+                        return syscall_result { syscall_result_code::ok, 0 };
+                    }
+                }
+                if (long_listing) {
+                    for (int i = 0; i < max + extra - name_length; i++) {
+                        buffer[index++] = ' ';
+                    }
+                    u64 size = child->size();
+                    string str_size = string::to_string(size);
+                    for (int i = 0; i < str_size.length(); i++) {
+                        if (child->kind() == fs_node_kind::file) {
+                            buffer[index++] = str_size[i];
+                        }
+                    }
+                }
+                buffer[index++] = '\n';
+                if (index == buffer_size) {
+                    buffer[++index] = '\0';
+                    return syscall_result { syscall_result_code::ok, 0 };
+                }
+            }
+            buffer[index] = '\0';
+            return syscall_result { syscall_result_code::ok, 0 };
+        }
+
+        return syscall_result { syscall_result_code::not_found, 0 };
+    }
 
 	default:
 		dprintf("ERROR: unsupported syscall: %lx\n", index);
