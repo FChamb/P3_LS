@@ -87,6 +87,7 @@ public:
 
 	static void poweroff() { syscall0(syscall_numbers::poweroff); }
 
+    // Added syscall_result ls for calling the ls function
     static syscall_result ls(u64 id, u64 arg0, u64 arg1, u64 arg2, u64 arg3) { return syscall4(syscall_numbers::ls, arg0, arg1, arg2, arg3); }
 
 private:

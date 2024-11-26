@@ -29,6 +29,7 @@ enum class syscall_numbers {
 	sleep = 15,
 	poweroff = 16,
 	ioctl = 17,
+    // Added a syscall_number for ls which follows the format
     ls = 18
 };
 

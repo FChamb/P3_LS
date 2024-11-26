@@ -54,14 +54,17 @@ class tarfs_node : public fs_node {
 	friend class tar_filesystem;
 
 public:
+    // Added function to return the children (i.e. the files) of a directory
     const list<tarfs_node*> &children() const {
         return children_;
     }
 
+    // Added function to return the number of children of a directory
 	u64 count() const {
 	    return children_.count();
     }
 
+    // Add function to return the size of a file
 	u64 size() const {
 	    return data_size_;
     }

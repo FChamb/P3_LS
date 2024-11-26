@@ -184,24 +184,49 @@ extern "C" syscall_result handle_syscall(syscall_numbers index, u64 arg0, u64 ar
 		return syscall_result { syscall_result_code::ok, 0 };
 	}
 
+    /**
+     * This case for syscall_numbers::ls handles ls. It receives the directory entries
+     * and formats them into a buffer provided by the caller.
+     *
+     * @param arg0 - Path to the directory to be listed
+     * @param arg1 - Buffer where the directory listing is to be written
+     * @param arg2 - Size of the buffer
+     * @param arg3 - Flag indicating whether to use long listing format
+     */
     case syscall_numbers::ls: {
+        // Convert u64 arguments to usable attributes
         auto path = (const char *) arg0;
         char *buffer = reinterpret_cast<char *>(arg1);
         auto buffer_size = static_cast<u64>(arg2);
         auto long_listing = (bool) arg3;
+
+        // Looks up the path to the virtual file system to receive the corresponding node
         auto node = vfs::get().lookup(path);
+
+        // Decrease the buffer_size by one to account for '\0'
         buffer_size--;
+
+        // Integers for pretty printing format
         int maxFull = 50;
         int max = 0;
         int extra = 10;
 
+        // Check if the retrieved node is a directory
         if (node && node->kind() == fs_node_kind::directory) {
+
+            // Casts the node to tarfs_node type to access directory specific methods
             auto dir = static_cast<tarfs_node*>(node);
+
+            // If directory doesn't exist return not_found
             if (!dir) {
                 return syscall_result { syscall_result_code::not_found, 0 };
             }
+
+            // Store the current index for the buffer and retrieve the children of the directory
             int index = 0;
             list<tarfs_node*> children = dir->children();
+
+            // Cycle through all the files and determine the max length name of files for spacing
             for (fs_node* child : children) {
                 if (child->name().length() > max) {
                     max = child->name().length();
@@ -210,29 +235,43 @@ extern "C" syscall_result handle_syscall(syscall_numbers index, u64 arg0, u64 ar
                     }
                 }
             }
+
+            // Iterate over the files and get their name and name length
             for (tarfs_node* child : children) {
                 int name_length = child->name().length();
                 string name = child->name();
+
+                // For some reason their sometimes exists a file with a name "" -> Skip this
                 if (name == "") {
                     continue;
                 }
+
+                // If -l has been passed, add the tag [F] or [D] to front of file buffer
                 if (long_listing) {
                     buffer[index++] = '[';
                     buffer[index++] = child->kind() == fs_node_kind::directory ? 'D' : 'F';
                     buffer[index++] = ']';
                     buffer[index++] = ' ';
                 }
+
+                // Add each file name to the buffer
                 for (int i = 0; i < name.length(); ++i) {
                     buffer[index++] = name[i];
+
+                    // Ensure not exceeding buffer capacity
                     if (index == buffer_size) {
                         buffer[++index] = '\0';
                         return syscall_result { syscall_result_code::ok, 0 };
                     }
                 }
+
+                // Add pretty format space for -l flad
                 if (long_listing) {
                     for (int i = 0; i < max + extra - name_length; i++) {
                         buffer[index++] = ' ';
                     }
+
+                    // Add the size of each file/directory to buffer
                     u64 size = child->size();
                     string str_size = string::to_string(size);
                     for (int i = 0; i < str_size.length(); i++) {
@@ -241,16 +280,21 @@ extern "C" syscall_result handle_syscall(syscall_numbers index, u64 arg0, u64 ar
                         }
                     }
                 }
+
+                // New line and check not exceeding buffer
                 buffer[index++] = '\n';
                 if (index == buffer_size) {
                     buffer[++index] = '\0';
                     return syscall_result { syscall_result_code::ok, 0 };
                 }
             }
+
+            // Ensures the buffer is null-terminated + return result
             buffer[index] = '\0';
             return syscall_result { syscall_result_code::ok, 0 };
         }
 
+        // No result found
         return syscall_result { syscall_result_code::not_found, 0 };
     }
 

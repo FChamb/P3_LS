@@ -1,5 +1,6 @@
 this-dir := $(CURDIR)
 
+# Added ls to the list of command able to run
 apps := init shell sched-test mandelbrot cat poweroff sched-test2 ls
 
 app-dirs := $(foreach APP,$(apps),$(this-dir)/$(APP))
