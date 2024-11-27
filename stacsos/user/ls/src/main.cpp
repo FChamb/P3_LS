@@ -50,8 +50,11 @@ int main(const char *command_line) {
     // Call syscall::ls with the provided arguments and store result
     syscall_result result = syscalls::ls(18, (u64) path, (u64) buffer, BUFFER_SIZE, long_listing);
 
-    // Write output to console
-    console::get().writef("%s", buffer);
+    // Write output to console -- Console only allows max of 1024 chars, so recall it for each char in buffer
+    int index = 0;
+    while (buffer[index] != '\0') {
+        console::get().writef("%c", buffer[index++]);
+    }
 
     return 0;
 }
